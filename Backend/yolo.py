@@ -1,41 +1,31 @@
-from PIL import Image
-import requests
-import numpy as np
 from ultralytics import YOLO
 
-# Load the YOLO model
-model = YOLO("yolov8n.pt")
+# Load the YOLOv8 model
+model = YOLO('yolov8n.pt')
 
-# Define a function to extract image center and bounding box coordinates
-def extract_coordinates(image_url):
-    # Predict on the image
-    results = model(image_url)
+# Perform inference on the image
+results = model("https://ultralytics.com/images/bus.jpg")
 
-    # Load the image using PIL
-    image = Image.open(requests.get(image_url, stream=True).raw)
-    image_width, image_height = image.size
+# Extract bounding boxes, classes, names, and confidences
+boxes = results[0].boxes.xyxy.tolist()
+classes = results[0].boxes.cls.tolist()
+names = results[0].names
+confidences = results[0].boxes.conf.tolist()
+# Bounding Box 중앙값
+center = []
 
-    # Extract image center coordinates
-    image_center = (image_width / 2, image_height / 2)
+# Iterate through the results
+for box, cls, conf in zip(boxes, classes, confidences):
+    x1, y1, x2, y2 = box
+    confidence = conf
+    detected_class = cls
+    name = names[int(cls)]
+    # Calculate the center of the bounding box
+    center.append(((x1 + x2) / 2, (y1 + y2) / 2))
+    
+# print("boxes : ", boxes)
+# print("classes : ", classes)
+# print("names : ", names)
+# print("confidences : ", confidences)
+print("center :", center)
 
-    # Extract bounding box coordinates
-    for label, confidence, box in results.xyxy[0]:
-        # Convert box coordinates from normalized to absolute values
-        xmin, ymin, xmax, ymax = box
-        xmin *= image_width
-        xmax *= image_width
-        ymin *= image_height
-        ymax *= image_height
-
-        # Calculate bounding box center coordinates
-        box_center = ((xmin + xmax) / 2, (ymin + ymax) / 2)
-
-        print("Label:", label)
-        print("Confidence:", confidence)
-        print("Bounding Box Center:", box_center)
-        print("Bounding Box Coordinates:", (xmin, ymin, xmax, ymax))
-        print()
-
-# Test the function with an example image URL
-image_url = "https://ultralytics.com/images/bus.jpg"
-extract_coordinates(image_url)
