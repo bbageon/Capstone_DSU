@@ -2,18 +2,25 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>JetRacer Streaming</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming</title>
 </head>
 <body>
-    <img id="stream" src="" alt="Streaming Image">
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.3/socket.io.js"></script>
+    <div id="image-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
-        const socket = io.connect('http://localhost:5000');
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
         
-        // 'stream' 채널을 구독하여 이미지를 받아 화면에 표시
-        socket.on('stream', function(imageData) {
-            document.getElementById('stream').src = 'data:image/jpeg;base64,' + imageData;
+        socket.on('connect', function() {
+            console.log('Connected');
+        });
+
+        socket.on('image_processed', function(data) {
+            var img = document.createElement('img');
+            img.src = 'data:image/jpeg;base64,' + data;
+            document.getElementById('image-container').innerHTML = '';
+            document.getElementById('image-container').appendChild(img);
         });
     </script>
 </body>
