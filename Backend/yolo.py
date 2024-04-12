@@ -6,26 +6,19 @@ model = YOLO('yolov8n.pt')
 # Perform inference on the image
 results = model("https://ultralytics.com/images/bus.jpg")
 
-# Extract bounding boxes, classes, names, and confidences
-boxes = results[0].boxes.xyxy.tolist()
-classes = results[0].boxes.cls.tolist()
-names = results[0].names
-confidences = results[0].boxes.conf.tolist()
-# Bounding Box 중앙값
-center = []
+# Get the class names used by the model
+class_names = model.names
+print(class_names, "@#@#@#")
 
-# Iterate through the results
-for box, cls, conf in zip(boxes, classes, confidences):
-    x1, y1, x2, y2 = box
-    confidence = conf
-    detected_class = cls
-    name = names[int(cls)]
-    # Calculate the center of the bounding box
-    center.append(((x1 + x2) / 2, (y1 + y2) / 2))
+for result in results:
+    boxes = result.boxes.xyxy  # Boxes object for bounding box outputs
+    labels = result.boxes.cls  # Class indexes of detected objects
     
-# print("boxes : ", boxes)
-# print("classes : ", classes)
-# print("names : ", names)
-# print("confidences : ", confidences)
-print("center :", center)
+    # Convert tensor labels to integers
+    labels = [int(label) for label in labels]
+    print("labels", labels)
 
+    # Convert class indexes to class names
+    class_names_detected = [class_names[i] for i in labels]
+    print("검출된 객체의 클래스 이름:", class_names_detected)
+    print("Bounding Boxes:", boxes)
