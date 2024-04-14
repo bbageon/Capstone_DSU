@@ -4,6 +4,7 @@ import numpy as np
 import websockets
 from ultralytics import YOLO
 import time
+import math
 
 # Load the YOLOv8 model
 model = YOLO('yolov8n.pt')
@@ -15,12 +16,15 @@ img_center_y = 112
 # 모델 내의 클래스 받아오기
 class_names = model.names
 
+# 각도 계산 함수
+def cal_rad(arr1, arr2):
+    rad = math.atan2(arr2[1] - arr1[1], arr2[0], arr1[0])
+    return math.degrees(rad)
+
 async def receive_image():
     uri = "ws://10.1.169.172:5000"  # 서버의 주소 및 포트
     async with websockets.connect(uri) as websocket:
         
-        # 속도 조절
-        time.sleep(2)
         while True:
             # 서버로부터 이미지 데이터 수신
             data = await websocket.recv()
@@ -47,7 +51,16 @@ async def receive_image():
                 # result.show()  # display to screen
                 # result.save(filename='result.jpg')
             
-                if len(boxes) > 0:    
+                if len(boxes) > 0: 
+                    
+                    # 목적지, 장애물, 각도
+                    goal_location = []
+                    obstacle_location = []
+                    move_angle = []
+                    
+                    # 속도 조절
+                    time.sleep(2)
+                    
                     for box, label in zip(boxes, labels):
                         x1, y1, x2, y2 = box
                         
@@ -60,9 +73,24 @@ async def receive_image():
                         # 이미지 중심과 bounding box 중심 거리 계산
                         distance_to_center = np.sqrt((img_center_x - box_center_x) ** 2 + (img_center_y - box_center_y) ** 2)
                         
-                        print("Bounding Box 중심 좌표:", (box_center_x, box_center_y))
-                        print("이미지 중심과의 거리:", distance_to_center)
-                        print("감지된 객체 : ", label)
+                        if label == "goal":
+                            goal_location.append([box_center_x, box_center_y])
+                        else:
+                            obstacle_location.append([box_center_x, box_center_y])
+                        
+                        # print("Bounding Box 중심 좌표:", (box_center_x, box_center_y))
+                        # print("이미지 중심과의 거리:", distance_to_center)
+                        # print("감지된 객체 : ", label)
+                    
+                    # 각도계산해서 추가
+                    goal_location.append([112,224])
+                    print("목적지 좌표 : ",goal_location)
+                    print("장애물 좌표 : ", obstacle_location)
+                    print("길이 : ", len(obstacle_location))
+                    for i in range(len(obstacle_location)):
+                        print("@#@#@#" , goal_location[0], obstacle_location[0][i])
+                        move_angle.append( cal_rad(goal_location[0], obstacle_location[0][i]) )
+                    print("각도 :", move_angle)
                 else:
                     print("감지된 객체 없음")
                 
