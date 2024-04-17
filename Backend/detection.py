@@ -18,8 +18,32 @@ class_names = model.names
 
 # 각도 계산 함수
 def cal_rad(arr1, arr2):
-    rad = math.atan2(arr2[1] - arr1[1], arr2[0], arr1[0])
-    return math.degrees(rad)
+    # 이미지 중심에서 각 점까지의 벡터 계산
+    vector1 = (arr1[0] - img_center_x, arr1[1] - img_center_y)
+    vector2 = (arr2[0] - img_center_x, arr2[1] - img_center_y)
+
+    # 각 벡터의 크기 계산
+    magnitude1 = math.sqrt(vector1[0] ** 2 + vector1[1] ** 2)
+    magnitude2 = math.sqrt(vector2[0] ** 2 + vector2[1] ** 2)
+
+    # 두 벡터의 내적 계산
+    dot_product = vector1[0] * vector2[0] + vector1[1] * vector2[1]
+
+    # 코사인 법칙을 이용하여 각도 계산
+    cos_angle = dot_product / (magnitude1 * magnitude2)
+
+    # 각도를 라디안에서 도로 변환
+    angle = math.acos(cos_angle)
+    angle_deg = math.degrees(angle)
+    
+    # 벡터의 외적 계산
+    cross_product = vector1[0] * vector2[1] - vector1[1] * vector2[0]
+
+    # 각도를 y축을 기준으로 왼쪽은 음수, 오른쪽은 양수값으로 변환
+    if cross_product < 0:
+        angle_deg = -angle_deg
+    
+    return angle_deg
 
 async def receive_image():
     uri = "ws://10.1.169.172:5000"  # 서버의 주소 및 포트
@@ -88,8 +112,8 @@ async def receive_image():
                     print("장애물 좌표 : ", obstacle_location)
                     print("길이 : ", len(obstacle_location))
                     for i in range(len(obstacle_location)):
-                        print("@#@#@#" , goal_location[0], obstacle_location[0][i])
-                        move_angle.append( cal_rad(goal_location[0], obstacle_location[0][i]) )
+                        print("@#@#@#" , goal_location[0], obstacle_location[i])
+                        move_angle.append( cal_rad(goal_location[0], obstacle_location[i]) )
                     print("각도 :", move_angle)
                 else:
                     print("감지된 객체 없음")
