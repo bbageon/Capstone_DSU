@@ -54,7 +54,7 @@ async def send_angle(move_angle):
         await websocket.send(json.dumps({"move_angle" : move_angle}))
 
 # yolo 모델 구동 및 각도 계산 및 전송 함수
-def detection_obstacle(img):
+async def detection_obstacle(img):
      # YOLO 모델 구동
         results = model(img, stream=True)
         for result in results:
@@ -114,10 +114,13 @@ def detection_obstacle(img):
                     send_angle(move_angle)
                 else:
                     print("감지된 장애물이 없습니다.")
-                send_angle(move_angle)
+                    
+                # 각도 전송
+                await send_angle(move_angle)
+                # YOLO predict 10초마다 한번씩 실행
+                await asyncio.sleep(10)
             else:
-                print("감지된 객체 없음")
-            asyncio.sleep(10) 
+                print("감지된 객체 없음") 
 
 # 실시간 스트리밍 데이터 수신 함수
 async def receive_image():
@@ -133,8 +136,8 @@ async def receive_image():
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
             # 이미지를 화면에 표시
-            # cv2.imshow("Received Image", img)
-            # cv2.waitKey(1)
+            cv2.imshow("Received Image", img)
+            cv2.waitKey(1)
             
             await detection_obstacle(img)
             
