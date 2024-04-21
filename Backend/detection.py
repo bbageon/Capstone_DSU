@@ -15,7 +15,10 @@ class_names = model.names
 
 # 이미지 중심 좌표 (0,0) width = 224 height = 224
 img_center_x = 112
-img_center_y = 112
+img_center_y = 224
+
+# jetracer 바퀴 각도를 위한 전처리 값, 바퀴값 [-1, 1] 사이, 최대각도 90도, 반대방향으로 가야하므로 - 값 
+jetracer_value = -90
 
 # 각도 계산 함수
 def cal_rad(arr1, arr2):
@@ -52,101 +55,58 @@ async def send_angle(move_angle):
     async with websockets.connect(uri) as websocket:    
         # 각도 Jetracer 에 전송
         await websocket.send(json.dumps({"move_angle" : move_angle}))
-
-# yolo 모델 구동 및 각도 계산 및 전송 함수
-async def detection_obstacle(img):
-     # YOLO 모델 구동
-        results = model(img, stream=True)
-        for result in results:
-            boxes = result.boxes.xyxy  # Boxes object for bounding box outputs
-            
-            # 검출된 객체가 모델에 있는지 확인
-            labels = [class_names[int(label)] for label in result.boxes.cls]
-            
-            # masks = result.masks  # Masks object for segmentation masks outputs
-            # keypoints = result.keypoints  # Keypoints object for pose outputs
-            # probs = result.probs  # Probs object for classification outputs
-            # result.show()  # display to screen
-            # result.save(filename='result.jpg')
         
-            if len(boxes) > 0: 
-                
-                # 목적지, 장애물, 각도
-                goal_location = []
-                obstacle_location = []
-                move_angle = []
-                
-                # # 속도 조절
-                # time.sleep(2)
-                
-                for box, label in zip(boxes, labels):
-                    x1, y1, x2, y2 = box
-                    
-                    # bounding box 중심 좌표
-                    box_center_x = round((((x1 + x2) / 2) / 224).item(), 6)
-                    box_center_y = round((((y1 + y2) / 2) / 224).item(), 6)
-                    # box_center_x = (box[0] + box[2]) / 2
-                    # box_center_y = (box[1] + box[3]) / 2
-                    
-                    # 이미지 중심과 bounding box 중심 거리 계산
-                    distance_to_center = np.sqrt((img_center_x - box_center_x) ** 2 + (img_center_y - box_center_y) ** 2)
-                    
-                    if label == "goal":
-                        goal_location.append([box_center_x, box_center_y])
-                    else:
-                        obstacle_location.append([box_center_x, box_center_y])
-                    
-                    print("Bounding Box 중심 좌표:", (box_center_x, box_center_y))
-                    # print("이미지 중심과의 거리:", distance_to_center)
-                    print("감지된 객체 : ", label)
-                
-                # 각도계산해서 추가
-                goal_location.append([112,224])
-                
-                # 장애물 감지된 경우에만 각도 계산
-                if obstacle_location:
-                    # 장애물 배열에 있는 좌표를 모두 계산
-                    for i in range(len(obstacle_location)):
-                        move_angle.append(cal_rad(goal_location[0], obstacle_location[i]))
-                    print("각도 :", move_angle)
-                    
-                    # 각도 데이터를 서버로 전송
-                    send_angle(move_angle)
-                else:
-                    print("감지된 장애물이 없습니다.")
-                    
-                # 각도 전송
-                await send_angle(move_angle)
-                # YOLO predict 10초마다 한번씩 실행
-                await asyncio.sleep(10)
-            else:
-                print("감지된 객체 없음") 
 
-# 실시간 스트리밍 데이터 수신 함수
-async def receive_image():
-    uri = "ws://10.1.169.172:5000"  # 서버의 주소 및 포트
-    async with websockets.connect(uri) as websocket:
-        
-        while True:
-            # 서버로부터 이미지 데이터 수신
-            data = await websocket.recv()
-
-            # 수신된 데이터를 이미지로 디코딩
-            nparr = np.frombuffer(data, np.uint8)
-            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-            # 이미지를 화면에 표시
-            cv2.imshow("Received Image", img)
-            cv2.waitKey(1)
-            
-            await detection_obstacle(img)
-            
-            # # 이미지를 파일로 저장
-            # img_file_path = f"received_image_.jpg"
-            # cv2.imwrite(img_file_path, img)
-
+# YOLO 모델 구동
 async def main():
-    await receive_image()
+    results = model('received_image1_.jpg')
+    for result in results:
+        boxes = result.boxes.xyxy  # Boxes object for bounding box outputs
 
-if __name__ == "__main__":
-    asyncio.run(main())
+        # 검출된 객체가 모델에 있는지 확인
+        labels = [class_names[int(label)] for label in result.boxes.cls]
+
+        if len(boxes) > 0:
+
+            # 목적지, 장애물, 각도
+            goal_location = []
+            obstacle_location = []
+            move_angle = []
+
+            for box, label in zip(boxes, labels):
+                x1, y1, x2, y2 = box
+
+                # bounding box 중심 좌표
+                box_center_x = round((((x1 + x2) / 2)).item(), 5)
+                box_center_y = round((((y1 + y2) / 2)).item(), 5)
+
+                # 이미지 중심과 bounding box 중심 거리 계산
+                distance_to_center = np.sqrt((img_center_x - box_center_x) ** 2 + (img_center_y - box_center_y) ** 2)
+
+                if label == "goal":
+                    goal_location.append([box_center_x, box_center_y])
+                else:
+                    obstacle_location.append([box_center_x, box_center_y])
+
+                print("Bounding Box 중심 좌표:", (box_center_x, box_center_y))
+                print("감지된 객체 : ", label)
+
+            # 각도계산해서 추가
+            goal_location.append([112,0])
+
+            # 장애물 감지된 경우에만 각도 계산
+            if obstacle_location:
+                # 장애물 배열에 있는 좌표를 모두 계산
+                for i in range(len(obstacle_location)):
+                    move_angle.append(round(cal_rad(goal_location[0], obstacle_location[i]) / jetracer_value,2))
+                print("각도 :", move_angle)
+
+                # 각도 데이터를 서버로 전송
+                await send_angle(move_angle)
+            else:
+                print("감지된 장애물이 없습니다.")
+        else:
+            print("감지된 객체 없음")
+
+# 비동기 함수 실행
+asyncio.run(main())
