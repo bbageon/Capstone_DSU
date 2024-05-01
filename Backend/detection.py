@@ -13,12 +13,58 @@ model = YOLO('yolov8n.pt')
 # 모델 내의 클래스 받아오기
 class_names = model.names
 
-# 이미지 중심 좌표 (0,0) width = 224 height = 224
-img_center_x = 112
-img_center_y = 224
+# 장애물과 목적지간의 각도를 계산하기 위한 기준점 (0,0) width = 448 height = 448
+img_center_x = 224
+img_center_y = 448
+
+# jetracer 에서 받아오는 이미지 크기
+img_width = 448
+img_height = 448
+
+# 이미지 3등분하여 영역 설정
+area_width = img_width // 3
+# 각 영역의 범위 설정
+area1_range = (0, area_width)
+area2_range = (area_width, area_width * 2)
+area3_range = (area_width * 2, img_width)
 
 # jetracer 바퀴 각도를 위한 전처리 값, 바퀴값 [-1, 1] 사이, 최대각도 90도, 반대방향으로 가야하므로 - 값 
 jetracer_value = -90
+
+# 탐지된 객체가 어디에 있는지 확인하는 함수 
+def determine_area(box_center_x):
+    if area1_range[0] <= box_center_x < area1_range[1]:
+        return 1
+    elif area2_range[0] <= box_center_x < area2_range[1]:
+        return 2
+    elif area3_range[0] <= box_center_x < area3_range[1]:
+        return 3
+    else:
+        return None
+    
+def determine_angle_value(goal_boundary, obstacle_boundary):
+    # 목적지와 장애물이 모두 영역 1에 있는 경우
+    if goal_boundary == 1:
+        if obstacle_boundary == 1:
+            return 2 
+        else:
+            return 1 
+    # 목적지와 장애물이 모두 영역 2에 있는 경우
+    elif goal_boundary == 2:
+        if obstacle_boundary == 2:
+            return 1,3
+        else:
+            return 2 
+    # 목적지와 장애물이 모두 영역 3에 있는 경우
+    elif goal_boundary == 3:
+        if obstacle_boundary == 3:
+            return 2
+        else:
+            return 3
+    # 기타 경우
+    else:
+        return "오류 발생"
+
 
 # 각도 계산 함수
 def cal_rad(arr1, arr2):
@@ -61,7 +107,7 @@ async def send_angle(move_angle):
 async def main():
     results = model('received_image1_.jpg')
     for result in results:
-        boxes = result.boxes.xyxy  # Boxes object for bounding box outputs
+        boxes = result.boxes.xyxy
 
         # 검출된 객체가 모델에 있는지 확인
         labels = [class_names[int(label)] for label in result.boxes.cls]
@@ -72,6 +118,8 @@ async def main():
             goal_location = []
             obstacle_location = []
             move_angle = []
+            # 가야하는 영역
+            area = []
 
             for box, label in zip(boxes, labels):
                 x1, y1, x2, y2 = box
@@ -80,26 +128,35 @@ async def main():
                 box_center_x = round((((x1 + x2) / 2)).item(), 5)
                 box_center_y = round((((y1 + y2) / 2)).item(), 5)
 
-                # 이미지 중심과 bounding box 중심 거리 계산
+                # 기준점과 bounding box 중심 거리 계산
                 distance_to_center = np.sqrt((img_center_x - box_center_x) ** 2 + (img_center_y - box_center_y) ** 2)
+                
 
                 if label == "goal":
                     goal_location.append([box_center_x, box_center_y])
+                    # 목적지가 어느 영역에 속하는지 확인
+                    goal_area = determine_area(goal_location[0][0])
                 else:
                     obstacle_location.append([box_center_x, box_center_y])
 
                 print("Bounding Box 중심 좌표:", (box_center_x, box_center_y))
+                print("현재 어느 영역?", determine_area(box_center_x))
                 print("감지된 객체 : ", label)
 
-            # 각도계산해서 추가
-            goal_location.append([112,0])
+            # 각도계산해서 추가, 현재는 임의로 목적지 좌표 (224, 0) 으로 설정
+            goal_location.append([224,0])
+            goal_area = determine_area(goal_location[0][0])
+            print("@#@#", goal_area)
 
             # 장애물 감지된 경우에만 각도 계산
             if obstacle_location:
                 # 장애물 배열에 있는 좌표를 모두 계산
                 for i in range(len(obstacle_location)):
+                    obstacle_area = determine_area(obstacle_location[i][0])
+                    area.append(determine_angle_value(goal_area, obstacle_area))
                     move_angle.append(round(cal_rad(goal_location[0], obstacle_location[i]) / jetracer_value,2))
                 print("각도 :", move_angle)
+                print("현재 가야하는 영역 :", area)
 
                 # 각도 데이터를 서버로 전송
                 await send_angle(move_angle)
