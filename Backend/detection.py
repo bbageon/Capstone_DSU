@@ -13,9 +13,9 @@ model = YOLO('yolov8n.pt')
 # 모델 내의 클래스 받아오기
 class_names = model.names
 
-# 장애물과 목적지간의 각도를 계산하기 위한 기준점 (0,0) width = 448 height = 448
-img_center_x = 224
-img_center_y = 448
+# 장애물과 목적지간의 각도를 계산하기 위한 기준점, 현재 로봇이 바라보고 있는 방향 width = 448 height = 448
+center_x = 224
+center_y = 448
 
 # jetracer 에서 받아오는 이미지 크기
 img_width = 448
@@ -67,33 +67,36 @@ def determine_angle_value(goal_boundary, obstacle_boundary):
 
 
 # 각도 계산 함수
-def cal_rad(arr1, arr2):
+def cal_rad(goal_location, obstacle_location):
     # 이미지 중심에서 각 점까지의 벡터 계산
-    vector1 = (arr1[0] - img_center_x, arr1[1] - img_center_y)
-    vector2 = (arr2[0] - img_center_x, arr2[1] - img_center_y)
+    v1 = (goal_location[0] - center_x, goal_location[1] - center_y)
+    v2 = (obstacle_location[0] - center_x, obstacle_location[1] - center_y)
 
     # 각 벡터의 크기 계산
-    magnitude1 = math.sqrt(vector1[0] ** 2 + vector1[1] ** 2)
-    magnitude2 = math.sqrt(vector2[0] ** 2 + vector2[1] ** 2)
+    m1 = math.sqrt(v1[0] ** 2 + v1[1] ** 2)
+    m2 = math.sqrt(v2[0] ** 2 + v2[1] ** 2)
 
     # 두 벡터의 내적 계산
-    dot_product = vector1[0] * vector2[0] + vector1[1] * vector2[1]
+    dot_product = v1[0] * v2[0] + v1[1] * v2[1]
 
     # 코사인 법칙을 이용하여 각도 계산
-    cos_angle = dot_product / (magnitude1 * magnitude2)
+    cos_angle = dot_product / (m1 * m2)
 
     # 각도를 라디안에서 도로 변환
     angle = math.acos(cos_angle)
-    angle_deg = math.degrees(angle)
+    angle_degree = math.degrees(angle)
     
     # 벡터의 외적 계산
-    cross_product = vector1[0] * vector2[1] - vector1[1] * vector2[0]
+    cross_product = v1[0] * v2[1] - v1[1] * v2[0]
 
     # 각도를 y축을 기준으로 왼쪽은 음수, 오른쪽은 양수값으로 변환
     if cross_product < 0:
-        angle_deg = -angle_deg
+        angle_degree = -angle_degree
     
-    return angle_deg
+    # jetracer 바퀴 각도값 [-1, 1] 사아
+    jetracer_angle = round(angle_degree / jetracer_value, 2)
+
+    return jetracer_angle
 
 # 각도 전송 함수
 async def send_angle(move_angle):
@@ -129,7 +132,7 @@ async def main():
                 box_center_y = round((((y1 + y2) / 2)).item(), 5)
 
                 # 기준점과 bounding box 중심 거리 계산
-                distance_to_center = np.sqrt((img_center_x - box_center_x) ** 2 + (img_center_y - box_center_y) ** 2)
+                distance_to_center = np.sqrt((center_x - box_center_x) ** 2 + (center_y - box_center_y) ** 2)
                 
 
                 if label == "goal":
@@ -154,7 +157,7 @@ async def main():
                 for i in range(len(obstacle_location)):
                     obstacle_area = determine_area(obstacle_location[i][0])
                     area.append(determine_angle_value(goal_area, obstacle_area))
-                    move_angle.append(round(cal_rad(goal_location[0], obstacle_location[i]) / jetracer_value,2))
+                    move_angle.append(cal_rad(goal_location[0], obstacle_location[i]))
                 print("각도 :", move_angle)
                 print("현재 가야하는 영역 :", area)
 

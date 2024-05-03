@@ -145,9 +145,9 @@ async def receive_image():
             
             # await detection_obstacle(img)
             
-            # 이미지를 파일로 저장
-            img_file_path = f"received_image1_.jpg"
-            cv2.imwrite(img_file_path, img)
+            # # 이미지를 파일로 저장
+            # img_file_path = f"received_image1_.jpg"
+            # cv2.imwrite(img_file_path, img)
             
 
 async def main():
