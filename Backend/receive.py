@@ -125,6 +125,15 @@ async def detection_obstacle(img):
                 await asyncio.sleep(10)
             else:
                 print("감지된 객체 없음") 
+                
+count = 0                
+# 이미지 저장 함수                
+async def save_image(img):
+    global count
+    img_file_path = f"./images/ObstacleImages/obstacleimage{count}_.jpg"
+    cv2.imwrite(img_file_path, img)
+    count += 1
+    print("Image saved as", img_file_path)
 
 # 실시간 스트리밍 데이터 수신 함수
 async def receive_image():
@@ -145,10 +154,10 @@ async def receive_image():
             
             # await detection_obstacle(img)
             
-            # # 이미지를 파일로 저장
-            # img_file_path = f"received_image1_.jpg"
-            # cv2.imwrite(img_file_path, img)
-            
+            await asyncio.sleep(0.1)
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('s'):
+                await save_image(img)
 
 async def main():
     await receive_image()
