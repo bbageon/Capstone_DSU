@@ -8,6 +8,6 @@ names: ['obstacle']
 roboflow:
   workspace: bbageon
   project: obstacle-detection-cbcp7
-  version: 1
+  version: 3
   license: CC BY 4.0
-  url: https://universe.roboflow.com/bbageon/obstacle-detection-cbcp7/dataset/1
+  url: https://universe.roboflow.com/bbageon/obstacle-detection-cbcp7/dataset
