@@ -1,4 +1,5 @@
 train: ../train/images
+val: ../valid/images
 test: ../test/images
 
 nc: 1
@@ -9,4 +10,4 @@ roboflow:
   project: obstacle-detection-cbcp7
   version: 1
   license: CC BY 4.0
-  url: https://universe.roboflow.com/bbageon/obstacle-detection-cbcp7/dataset/
+  url: https://universe.roboflow.com/bbageon/obstacle-detection-cbcp7/dataset/1
