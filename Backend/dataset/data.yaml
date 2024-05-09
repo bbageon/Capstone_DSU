@@ -1,0 +1,12 @@
+train: ../train/images
+test: ../test/images
+
+nc: 1
+names: ['obstacle']
+
+roboflow:
+  workspace: bbageon
+  project: obstacle-detection-cbcp7
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/bbageon/obstacle-detection-cbcp7/dataset/
