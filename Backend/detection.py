@@ -8,7 +8,7 @@ import math
 import json
 
 # Load the YOLOv8 model
-model = YOLO('./runs/detect/train2/weights/best.pt')
+model = YOLO('./runs/detect/train2/weights/last.pt')
 
 # 모델 내의 클래스 받아오기
 class_names = model.names
@@ -46,21 +46,27 @@ def determine_angle_value(goal_boundary, obstacle_boundary):
     # 목적지와 장애물이 모두 영역 1에 있는 경우
     if goal_boundary == 1:
         if obstacle_boundary == 1:
-            return 2 
+            # return 2
+            return 0 # jetracer 각도 0 
         else:
-            return 1 
+            # return 1 
+            return -0.5 # jetracer 각도 -45도
     # 목적지와 장애물이 모두 영역 2에 있는 경우
     elif goal_boundary == 2:
         if obstacle_boundary == 2:
-            return 1,3
+            # return 1,3
+            return -0.5 # jetracer 각도 45도
         else:
-            return 2 
+            # return 2 
+            return 0 # jetracer 각도 0
     # 목적지와 장애물이 모두 영역 3에 있는 경우
     elif goal_boundary == 3:
         if obstacle_boundary == 3:
-            return 2
+            # return 2
+            return 0 # jetracer 각도 0
         else:
-            return 3
+            # return 3
+            return 0.5 # jetracer 각도 45도
     # 기타 경우
     else:
         return "오류 발생"
@@ -123,6 +129,7 @@ async def main():
             move_angle = []
             # 가야하는 영역
             area = []
+            goal_area = []
 
             for box, label in zip(boxes, labels):
                 x1, y1, x2, y2 = box
@@ -142,14 +149,21 @@ async def main():
                 else:
                     obstacle_location.append([box_center_x, box_center_y])
 
+
                 print("Bounding Box 중심 좌표:", (box_center_x, box_center_y))
                 print("현재 어느 영역?", determine_area(box_center_x))
                 print("감지된 객체 : ", label)
 
-            # 각도계산해서 추가, 현재는 임의로 목적지 좌표 (224, 0) 으로 설정
-            goal_location.append([224,0])
-            goal_area = determine_area(goal_location[0][0])
-            print("@#@#", goal_area)
+            # # 각도계산해서 추가, 현재는 임의로 목적지 좌표 (224, 0) 으로 설정
+            # goal_location.append([224,0])
+            # goal_area = determine_area(goal_location[0][0])
+            # print("@#@#", goal_area)
+
+            # goal 탐지 안 됐을 때 예외처리 
+            if len(goal_location) == 0:
+                return print("goal 없음")
+
+
 
             # 장애물 감지된 경우에만 각도 계산
             if obstacle_location:
@@ -161,8 +175,10 @@ async def main():
                 print("각도 :", move_angle)
                 print("현재 가야하는 영역 :", area)
 
-                # 각도 데이터를 서버로 전송
-                await send_angle(move_angle)
+                # # 각도 데이터를 서버로 전송
+                # await send_angle(move_angle)
+                # 영역 전송
+                await send_angle(area[0])
             else:
                 print("감지된 장애물이 없습니다.")
         else:

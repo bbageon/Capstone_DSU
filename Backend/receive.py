@@ -156,7 +156,7 @@ async def receive_image():
             
             # await detection_obstacle(img)
             
-            await asyncio.sleep(0.1)
+            # await asyncio.sleep(0.1)
             key = cv2.waitKey(1) & 0xFF
             if key == ord('s'):
                 await save_image(img)
