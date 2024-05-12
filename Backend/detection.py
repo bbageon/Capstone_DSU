@@ -126,6 +126,7 @@ async def save_image(img):
         
 # 실시간 스트리밍 데이터 수신 함수
 async def receive_image():
+    global receive_images
     uri = "ws://10.1.169.172:5000"  # 서버의 주소 및 포트
     async with websockets.connect(uri) as websocket:
         
@@ -136,12 +137,13 @@ async def receive_image():
             # 수신된 데이터를 이미지로 디코딩
             nparr = np.frombuffer(data, np.uint8)
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+            receive_images = img
 
             # 이미지를 화면에 표시
             cv2.imshow("Received Image", img)
             cv2.waitKey(1)
             
-            # await detection_obstacle(img)
             
             # await asyncio.sleep(0.1)
             key = cv2.waitKey(1) & 0xFF
@@ -150,7 +152,9 @@ async def receive_image():
 
 # YOLO 모델 구동
 async def detection_image():
-    results = model('received_image_.jpg')
+    global receive_images
+    if receive_images is not None:
+        results = model(receive_images)
     for result in results:
         boxes = result.boxes.xyxy
 
