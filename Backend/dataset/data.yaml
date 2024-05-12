@@ -2,12 +2,12 @@ train: ../train/images
 val: ../valid/images
 test: ../test/images
 
-nc: 1
-names: ['obstacle']
+nc: 2
+names: ['goal', 'obstacle']
 
 roboflow:
   workspace: bbageon
   project: obstacle-detection-cbcp7
-  version: 3
+  version: 4
   license: CC BY 4.0
-  url: https://universe.roboflow.com/bbageon/obstacle-detection-cbcp7/dataset
+  url: https://universe.roboflow.com/bbageon/obstacle-detection-cbcp7/dataset/4

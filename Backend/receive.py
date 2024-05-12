@@ -8,7 +8,7 @@ import math
 import json
 
 # Load the YOLOv8 model
-model = YOLO('yolov8n.pt')
+model = YOLO('./yolov8n.pt')
 
 # 모델 내의 클래스 받아오기
 class_names = model.names
@@ -125,12 +125,14 @@ async def detection_obstacle(img):
                 await asyncio.sleep(10)
             else:
                 print("감지된 객체 없음") 
-                
-count = 0                
+
+# 현재 이미지 개수     
+count = 0          
 # 이미지 저장 함수                
 async def save_image(img):
     global count
-    img_file_path = f"./images/ObstacleImages/obstacleimage{count}_.jpg"
+    img_file_path = f"./received_image_.jpg"
+    # img_file_path = f"./images/secondimageset/image{count}_.jpg"
     cv2.imwrite(img_file_path, img)
     count += 1
     print("Image saved as", img_file_path)

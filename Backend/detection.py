@@ -8,18 +8,18 @@ import math
 import json
 
 # Load the YOLOv8 model
-model = YOLO('yolov8n.pt')
+model = YOLO('./runs/detect/train2/weights/best.pt')
 
 # 모델 내의 클래스 받아오기
 class_names = model.names
 
 # 장애물과 목적지간의 각도를 계산하기 위한 기준점, 현재 로봇이 바라보고 있는 방향 width = 448 height = 448
-center_x = 224
-center_y = 448
+center_x = 320
+center_y = 640
 
 # jetracer 에서 받아오는 이미지 크기
-img_width = 448
-img_height = 448
+img_width = 640
+img_height = 640
 
 # 이미지 3등분하여 영역 설정
 area_width = img_width // 3
@@ -108,7 +108,7 @@ async def send_angle(move_angle):
 
 # YOLO 모델 구동
 async def main():
-    results = model('received_image1_.jpg')
+    results = model('received_image_.jpg')
     for result in results:
         boxes = result.boxes.xyxy
 
