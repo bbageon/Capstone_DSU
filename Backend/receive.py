@@ -131,7 +131,7 @@ count = 0
 # 이미지 저장 함수                
 async def save_image(img):
     global count
-    img_file_path = f"./received_image_.jpg"
+    img_file_path = f"./received_image1_.jpg"
     # img_file_path = f"./images/secondimageset/image{count}_.jpg"
     cv2.imwrite(img_file_path, img)
     count += 1
