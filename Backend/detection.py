@@ -153,8 +153,8 @@ async def receive_image():
 # YOLO 모델 구동
 async def detection_image():
     global receive_images
-    if receive_images is not None:
-        results = model(receive_images)
+    results = model(receive_images)
+        
     for result in results:
         boxes = result.boxes.xyxy
 
