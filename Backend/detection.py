@@ -154,9 +154,8 @@ async def receive_image():
 async def detection_image():
     # 수신한 실시간 스트리밍 데이터 선언
     global receive_images
-    if receive_images is not None:
-        results = model(receive_images)
-
+    results = model(receive_images)
+        
     for result in results:
         boxes = result.boxes.xyxy
 
@@ -194,7 +193,7 @@ async def detection_image():
             # goal 탐지 안 됐을 때 예외처리 
             if not goal_location:
                 return print("goal 없음")
-                 
+            
             # 장애물 감지된 경우에만 각도 계산
             if obstacle_location:
                 
