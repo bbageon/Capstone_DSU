@@ -108,7 +108,7 @@ def cal_rad(goal_location, obstacle_location):
 
 # 각도 전송 함수
 async def send_angle(move_angle):
-    uri = "ws://10.1.169.172:5001"
+    uri = "ws://127.0.1.1:5001"
     async with websockets.connect(uri) as websocket:    
         # 각도 Jetracer 에 전송
         await websocket.send(json.dumps({"move_angle" : move_angle}))
@@ -118,8 +118,8 @@ count = 0
 # 이미지 저장 함수                
 async def save_image(img):
     global count
-    img_file_path = f"./received_image1_.jpg"
-    # img_file_path = f"./images/secondimageset/image{count}_.jpg"
+    # img_file_path = f"./received_image1_.jpg"
+    img_file_path = f"./images/thirdimages/image{count}_.jpg"
     cv2.imwrite(img_file_path, img)
     count += 1
     print("Image saved as", img_file_path)
@@ -127,7 +127,7 @@ async def save_image(img):
 # 실시간 스트리밍 데이터 수신 함수
 async def receive_image():
     global receive_images
-    uri = "ws://10.1.169.172:5000"  # 서버의 주소 및 포트
+    uri = "ws://127.0.1.1:5000"  # 서버의 주소 및 포트
     async with websockets.connect(uri) as websocket:
         
         while True:
@@ -152,9 +152,11 @@ async def receive_image():
 
 # YOLO 모델 구동
 async def detection_image():
+    # 수신한 실시간 스트리밍 데이터 선언
     global receive_images
     if receive_images is not None:
         results = model(receive_images)
+
     for result in results:
         boxes = result.boxes.xyxy
 
@@ -234,10 +236,10 @@ async def detection_image():
 async def run_detection():
     while True:
         await asyncio.sleep(5)  # 5초 대기
-        await detection_image()
+        # await detection_image()
         # if sys.stdin in asyncio.current_task().get_stack()[0].task.get_coros():
         #     # 키보드 입력 감지
-        #     key = sys.stdin.read(1)
+        #     key = sys.stdin.read(1)   
         #     if key == 'd':
         #         print("탐지 작업 종료")
         #         break
