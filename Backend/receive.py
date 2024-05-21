@@ -139,7 +139,7 @@ async def save_image(img):
 
 # 실시간 스트리밍 데이터 수신 함수
 async def receive_image():
-    uri = "ws://10.1.169.172:5000"  # 서버의 주소 및 포트
+    uri = "ws://10.1.9.72:5000"  # 서버의 주소 및 포트
     async with websockets.connect(uri) as websocket:
         
         while True:

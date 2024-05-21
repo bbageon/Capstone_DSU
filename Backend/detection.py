@@ -108,13 +108,13 @@ def cal_rad(goal_location, obstacle_location):
 
 # 각도 전송 함수
 async def send_angle(move_angle):
-    uri = "ws://127.0.1.1:5001"
+    uri = "ws://10.1.9.72:5001"
     async with websockets.connect(uri) as websocket:    
         # 각도 Jetracer 에 전송
         await websocket.send(json.dumps({"move_angle" : move_angle}))
         
 # 현재 이미지 개수     
-count = 0          
+count = 205     
 # 이미지 저장 함수                
 async def save_image(img):
     global count
@@ -127,7 +127,7 @@ async def save_image(img):
 # 실시간 스트리밍 데이터 수신 함수
 async def receive_image():
     global receive_images
-    uri = "ws://127.0.1.1:5000"  # 서버의 주소 및 포트
+    uri = "ws://10.1.9.72:5000"  # 서버의 주소 및 포트
     async with websockets.connect(uri) as websocket:
         
         while True:
@@ -149,6 +149,16 @@ async def receive_image():
             key = cv2.waitKey(1) & 0xFF
             if key == ord('s'):
                 await save_image(img)
+                speed = 0
+                await send_angle(speed)
+            if key == ord('q'):
+                await save_image(img)
+                speed = -0.5
+                await send_angle(speed)
+            if key == ord('e'):
+                await save_image(img)
+                speed = 0.5
+                await send_angle(speed)               
 
 # YOLO 모델 구동
 async def detection_image():
