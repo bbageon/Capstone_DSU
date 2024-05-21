@@ -9,7 +9,7 @@ import json
 import sys
 
 # Load the YOLOv8 model
-model = YOLO('./runs/detect/train2/weights/last.pt')
+model = YOLO('./runs/detect/train3/weights/best.pt')
 
 # 모델 내의 클래스 받아오기
 class_names = model.names
@@ -45,33 +45,43 @@ def determine_area(box_center_x):
 
 # 장애물과 목표의 영역에 따라 결정되는 Jetracer 가 어느 영역으로 가야하는지 결정하는 함수    
 def determine_jetracer_area(goal_boundary, obstacle_boundary):
-    # 목적지와 장애물이 모두 영역 1에 있는 경우
-    if goal_boundary == 1:
-        if obstacle_boundary == 1:
-            # return 2
-            return 0 # jetracer 각도 0 
+    if obstacle_boundary is None:
+        if goal_boundary == 2:
+            return 0
+        elif goal_boundary == 3:
+            return 1
+        elif goal_boundary == 1:
+            return -1
         else:
-            # return 1 
-            return -0.5 # jetracer 각도 -45도
-    # 목적지와 장애물이 모두 영역 2에 있는 경우
-    elif goal_boundary == 2:
-        if obstacle_boundary == 2:
-            # return 1,3
-            return -0.5 # jetracer 각도 45도
-        else:
-            # return 2 
-            return 0 # jetracer 각도 0
-    # 목적지와 장애물이 모두 영역 3에 있는 경우
-    elif goal_boundary == 3:
-        if obstacle_boundary == 3:
-            # return 2
-            return 0 # jetracer 각도 0
-        else:
-            # return 3
-            return 0.5 # jetracer 각도 45도
-    # 기타 경우
+            return "오류"
     else:
-        return "오류 발생"
+        # 목적지와 장애물이 모두 영역 1에 있는 경우
+        if goal_boundary == 1:
+            if obstacle_boundary == 1:
+                # return 2
+                return 0 # jetracer 각도 0 
+            else:
+                # return 1 
+                return -0.5 # jetracer 각도 -45도
+        # 목적지와 장애물이 모두 영역 2에 있는 경우
+        elif goal_boundary == 2:
+            if obstacle_boundary == 2:
+                # return 1,3
+                return -0.5 # jetracer 각도 45도
+            else:
+                # return 2 
+                return 0 # jetracer 각도 0
+        # 목적지와 장애물이 모두 영역 3에 있는 경우
+        elif goal_boundary == 3:
+            if obstacle_boundary == 3:
+                # return 2
+                return 0 # jetracer 각도 0
+            else:
+                # return 3
+                return 0.5 # jetracer 각도 45도
+        # 기타 경우
+        else:
+            return "오류 발생"
 
 
 # 각도 계산 함수
@@ -114,7 +124,7 @@ async def send_angle(move_angle):
         await websocket.send(json.dumps({"move_angle" : move_angle}))
         
 # 현재 이미지 개수     
-count = 205     
+count = 700    
 # 이미지 저장 함수                
 async def save_image(img):
     global count
@@ -203,15 +213,15 @@ async def detection_image():
             # goal 탐지 안 됐을 때 예외처리 
             if not goal_location:
                 return print("goal 없음")
+            else:
+                # 목적지가 어느 영역에 속하는지 확인
+                goal_area = determine_area(goal_location[0])
             
             # 장애물 감지된 경우에만 각도 계산
             if obstacle_location:
                 
                 move_angle = []
                 area = []
-                
-                # 목적지가 어느 영역에 속하는지 확인
-                goal_area = determine_area(goal_location[0])
                 
                 # 거리 기준으로 장애물 정렬
                 obstacle_location.sort(key=lambda x: x["distance"])
@@ -237,6 +247,7 @@ async def detection_image():
                 # 영역 전송
                 await send_angle(area[0])
             else:
+                await send_angle(determine_jetracer_area(goal_area, None))
                 print("감지된 장애물이 없습니다.")
         else:
             print("감지된 객체 없음")
@@ -245,7 +256,7 @@ async def detection_image():
 async def run_detection():
     while True:
         await asyncio.sleep(5)  # 5초 대기
-        # await detection_image()
+        await detection_image()
         # if sys.stdin in asyncio.current_task().get_stack()[0].task.get_coros():
         #     # 키보드 입력 감지
         #     key = sys.stdin.read(1)   

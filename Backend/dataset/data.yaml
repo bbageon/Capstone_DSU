@@ -7,7 +7,7 @@ names: ['goal', 'obstacle']
 
 roboflow:
   workspace: bbageon
-  project: obstacle-detection-cbcp7
-  version: 4
+  project: capstonedesign-n6l3o
+  version: 1
   license: CC BY 4.0
-  url: https://universe.roboflow.com/bbageon/obstacle-detection-cbcp7/dataset/4
+  url: https://universe.roboflow.com/bbageon/capstonedesign-n6l3o/dataset/1
