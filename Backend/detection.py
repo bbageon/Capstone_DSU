@@ -168,7 +168,64 @@ async def receive_image():
             if key == ord('e'):
                 await save_image(img)
                 speed = 0.5
-                await send_angle(speed)               
+                await send_angle(speed)
+                
+# 탐지 객체 처리 과정
+def process_detections(boxes, labels):
+    # 목적지, 장애물
+    goal_location = []
+    obstacle_location = []
+
+    for box, label in zip(boxes, labels):
+        x1, y1, x2, y2 = box
+
+        # bounding box 중심 좌표
+        box_center_x = round((((x1 + x2) / 2)).item(), 5)
+        box_center_y = round((((y1 + y2) / 2)).item(), 5)
+
+        # 기준점과 bounding box 중심 거리 계산
+        distance_to_center = round(np.sqrt((center_x - box_center_x) ** 2 + (center_y - box_center_y) ** 2), 2)
+        
+
+        if label == "goal":
+            goal_location = [box_center_x, box_center_y]
+        else:
+            obstacle_location.append({"location": [box_center_x, box_center_y], "distance": distance_to_center})
+
+        print("Bounding Box 중심 좌표:", (box_center_x, box_center_y))
+        print("현재 어느 영역?", determine_area(box_center_x))
+        print("감지된 객체 : ", label)
+        print("거리 : ", distance_to_center)
+    
+    return goal_location, obstacle_location
+
+async def handle_obstacles(goal_location, goal_area, obstacle_location):
+    move_angle = []
+    area = []
+    
+    # 거리 기준으로 장애물 정렬
+    obstacle_location.sort(key=lambda x: x["distance"])
+    
+    # 장애물 배열에 있는 좌표를 모두 계산
+    for obstacle in obstacle_location:
+        
+        # 장애물 어디 영역인지 계산
+        obstacle_area = determine_area(obstacle["location"][0])
+        
+        # jetracer 어느 영역으로 가야하는지 계산
+        area.append(determine_jetracer_area(goal_area, obstacle_area))
+        
+        # 장애물과 목표의 라디안 각도를 jetracer 각도로 변환
+        move_angle.append(cal_rad(goal_location, obstacle["location"]))
+        
+    print("각도 :", move_angle)
+    print("현재 가야하는 영역 :", area)
+
+    # # 각도 데이터를 서버로 전송
+    # await send_angle(move_angle)
+    
+    # 영역 전송
+    await send_angle(area[0])
 
 # YOLO 모델 구동
 async def detection_image():
@@ -183,69 +240,19 @@ async def detection_image():
         labels = [class_names[int(label)] for label in result.boxes.cls]
 
         if len(boxes) > 0:
-
-            # 목적지, 장애물
-            goal_location = []
-            obstacle_location = []
-
-            for box, label in zip(boxes, labels):
-                x1, y1, x2, y2 = box
-
-                # bounding box 중심 좌표
-                box_center_x = round((((x1 + x2) / 2)).item(), 5)
-                box_center_y = round((((y1 + y2) / 2)).item(), 5)
-
-                # 기준점과 bounding box 중심 거리 계산
-                distance_to_center = round(np.sqrt((center_x - box_center_x) ** 2 + (center_y - box_center_y) ** 2), 2)
-                
-
-                if label == "goal":
-                    goal_location = [box_center_x, box_center_y]
-                else:
-                    obstacle_location.append({"location": [box_center_x, box_center_y], "distance": distance_to_center})
-
-
-                print("Bounding Box 중심 좌표:", (box_center_x, box_center_y))
-                print("현재 어느 영역?", determine_area(box_center_x))
-                print("감지된 객체 : ", label)
-                print("거리 : ", distance_to_center)
-
+            goal_location, obstacle_location = process_detections(boxes, labels)
+            
             # goal 탐지 안 됐을 때 예외처리 
             if not goal_location:
-                return print("goal 없음")
+                print("goal 없음")
+                return 
             else:
                 # 목적지가 어느 영역에 속하는지 확인
                 goal_area = determine_area(goal_location[0])
             
             # 장애물 감지된 경우에만 각도 계산
             if obstacle_location:
-                
-                move_angle = []
-                area = []
-                
-                # 거리 기준으로 장애물 정렬
-                obstacle_location.sort(key=lambda x: x["distance"])
-                
-                # 장애물 배열에 있는 좌표를 모두 계산
-                for obstacle in obstacle_location:
-                    
-                    # 장애물 어디 영역인지 계산
-                    obstacle_area = determine_area(obstacle["location"][0])
-                    
-                    # jetracer 어느 영역으로 가야하는지 계산
-                    area.append(determine_jetracer_area(goal_area, obstacle_area))
-                    
-                    # 장애물과 목표의 라디안 각도를 jetracer 각도로 변환
-                    move_angle.append(cal_rad(goal_location, obstacle["location"]))
-                    
-                print("각도 :", move_angle)
-                print("현재 가야하는 영역 :", area)
-
-                # # 각도 데이터를 서버로 전송
-                # await send_angle(move_angle)
-                
-                # 영역 전송
-                await send_angle(area[0])
+                await handle_obstacles(goal_location, goal_area, obstacle_location)
             else:
                 await send_angle(determine_jetracer_area(goal_area, None))
                 print("감지된 장애물이 없습니다.")
