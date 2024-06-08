@@ -225,7 +225,12 @@ async def handle_obstacles(goal_location, goal_area, obstacle_location):
     # await send_angle(move_angle)
     
     # 영역 전송
-    await send_angle(area[0])
+    if area[0] == 0.5 and area[0] == -0.5:
+        await send_angle(move_angle[0])
+        print("영역전송")
+    else:
+        await send_angle(area[0])
+        print("각도전송")
 
 # YOLO 모델 구동
 async def detection_image():
