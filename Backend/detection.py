@@ -140,6 +140,7 @@ def cal_rad(goal_location, obstacle_location):
     return jetracer_angle
 
 # 각도 전송 함수
+<<<<<<< HEAD
 async def send_angle(move_angle, throttle=0.5):  # 기본 속도 설정
     uri = "ws://10.1.80.245:5001"
     async with websockets.connect(uri) as websocket:
@@ -174,6 +175,13 @@ async def handle_obstacles(goal_location, goal_area, obstacle_location):
     else:
         await send_angle(area[0], 0.5)  # 이동 각도와 기본 속도를 함께 전송
 
+=======
+async def send_angle(move_angle):
+    uri = "ws://10.1.80.245:5001"
+    async with websockets.connect(uri) as websocket:    
+        # 각도 Jetracer 에 전송
+        await websocket.send(json.dumps({"move_angle" : move_angle}))
+>>>>>>> ca9300001f559f22b979cccd90db4d1df066ede9
         
 # 현재 이미지 개수     
 count = 700    
@@ -185,6 +193,8 @@ async def save_image(img):
     cv2.imwrite(img_file_path, img)
     count += 1
     print("Image saved as", img_file_path)
+
+receive_images = None 
         
 # 실시간 스트리밍 데이터 수신 함수
 async def receive_image():
