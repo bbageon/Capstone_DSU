@@ -23,14 +23,28 @@ img_width = 640
 img_height = 640
 
 # 이미지 3등분하여 영역 설정
-area_width = img_width // 3
+area_width = img_width // 5
 # 각 영역의 범위 설정
 area1_range = (0, area_width)
 area2_range = (area_width, area_width * 2)
-area3_range = (area_width * 2, img_width)
+area3_range = (area_width * 2, area_width * 3)
+area4_range = (area_width * 3, area_width * 4)
+area5_range = (area_width * 4, img_width)
 
 # jetracer 바퀴 각도를 위한 전처리 값, 바퀴값 [-1, 1] 사이, 최대각도 90도, 반대방향으로 가야하므로 - 값 
 jetracer_value = -90
+
+# 수신한 실시간 스트리밍 데이터 선언 및 초기화
+receive_images = None
+
+# 목표에 도달했는지 확인하는 함수
+def check_if_reached_goal(goal_location):
+    # 중심점과 목표의 거리를 계산하여 목표에 충분히 가까워졌는지 확인
+    distance_to_goal = math.sqrt((center_x - goal_location[0]) ** 2 + (center_y - goal_location[1]) ** 2)
+    print(f"목표까지의 거리: {distance_to_goal}")
+    if distance_to_goal < 100:  # 100px 이내로 가까워지면 멈춤
+        return True
+    return False
 
 # 탐지된 객체가 어디에 있는지 확인하는 함수 
 def determine_area(box_center_x):
@@ -40,46 +54,55 @@ def determine_area(box_center_x):
         return 2
     elif area3_range[0] <= box_center_x < area3_range[1]:
         return 3
+    elif area4_range[0] <= box_center_x < area4_range[1]:
+        return 4
+    elif area5_range[0] <= box_center_x < area5_range[1]:
+        return 5
     else:
         return None
 
 # 장애물과 목표의 영역에 따라 결정되는 Jetracer 가 어느 영역으로 가야하는지 결정하는 함수    
 def determine_jetracer_area(goal_boundary, obstacle_boundary):
     if obstacle_boundary is None:
-        if goal_boundary == 2:
-            return 0
-        elif goal_boundary == 3:
-            return 1
+        if goal_boundary == 3:
+            return 0  # 중앙
+        elif goal_boundary == 4:
+            return 0.5  # 약간 오른쪽
+        elif goal_boundary == 5:
+            return 1  # 오른쪽 끝
+        elif goal_boundary == 2:
+            return -0.5  # 약간 왼쪽
         elif goal_boundary == 1:
-            return -1
+            return -1  # 왼쪽 끝
         else:
             return "오류"
     else:
-        # 목적지와 장애물이 모두 영역 1에 있는 경우
+        # 여기서도 각도를 세밀하게 추가하여 장애물 회피 주행을 구현
         if goal_boundary == 1:
             if obstacle_boundary == 1:
-                # return 2
-                return 0 # jetracer 각도 0 
+                return 0  # 앞으로 직진
             else:
-                # return 1 
-                return -0.5 # jetracer 각도 -45도
-        # 목적지와 장애물이 모두 영역 2에 있는 경우
+                return -0.5  # 조금 왼쪽
         elif goal_boundary == 2:
             if obstacle_boundary == 2:
-                # return 1,3
-                return -0.5 # jetracer 각도 45도
+                return 0  # 약간 직진
             else:
-                # return 2 
-                return 0 # jetracer 각도 0
-        # 목적지와 장애물이 모두 영역 3에 있는 경우
+                return -0.5  # 왼쪽
         elif goal_boundary == 3:
             if obstacle_boundary == 3:
-                # return 2
-                return 0 # jetracer 각도 0
+                return 0  # 중앙
             else:
-                # return 3
-                return 0.5 # jetracer 각도 45도
-        # 기타 경우
+                return 0.5  # 약간 오른쪽
+        elif goal_boundary == 4:
+            if obstacle_boundary == 4:
+                return 0  # 약간 직진
+            else:
+                return 0.5  # 오른쪽
+        elif goal_boundary == 5:
+            if obstacle_boundary == 5:
+                return 0  # 직진
+            else:
+                return 0.5  # 오른쪽
         else:
             return "오류 발생"
 
@@ -111,17 +134,46 @@ def cal_rad(goal_location, obstacle_location):
     if cross_product < 0:
         angle_degree = -angle_degree
     
-    # jetracer 바퀴 각도값 [-1, 1] 사아
+    # jetracer 바퀴 각도값 [-1, 1] 사이
     jetracer_angle = round(angle_degree / jetracer_value, 2)
 
     return jetracer_angle
 
 # 각도 전송 함수
-async def send_angle(move_angle):
-    uri = "ws://20.30.65.121:5001"
-    async with websockets.connect(uri) as websocket:    
-        # 각도 Jetracer 에 전송
-        await websocket.send(json.dumps({"move_angle" : move_angle}))
+async def send_angle(move_angle, throttle=0.5):  # 기본 속도 설정
+    uri = "ws://10.1.80.245:5001"
+    async with websockets.connect(uri) as websocket:
+        await websocket.send(json.dumps({"move_angle" : move_angle, "throttle" : throttle}))  # 각도와 속도를 함께 전송
+
+async def handle_obstacles(goal_location, goal_area, obstacle_location):
+    move_angle = []
+    area = []
+    
+    # 거리 기준으로 장애물 정렬
+    obstacle_location.sort(key=lambda x: x["distance"])
+    
+    # 장애물 배열에 있는 좌표를 모두 계산
+    for obstacle in obstacle_location:
+        
+        # 장애물 어디 영역인지 계산
+        obstacle_area = determine_area(obstacle["location"][0])
+        
+        # jetracer 어느 영역으로 가야하는지 계산
+        area.append(determine_jetracer_area(goal_area, obstacle_area))
+        
+        # 장애물과 목표의 라디안 각도를 jetracer 각도로 변환
+        move_angle.append(cal_rad(goal_location, obstacle["location"]))
+        
+    print("각도 :", move_angle)
+    print("현재 가야하는 영역 :", area)
+
+    # 목표에 도달했는지 확인
+    if check_if_reached_goal(goal_location):
+        print("목표에 도달")
+        await send_angle(0, 0)  # 차량 멈추기 (속도 0, 각도 0)
+    else:
+        await send_angle(area[0], 0.5)  # 이동 각도와 기본 속도를 함께 전송
+
         
 # 현재 이미지 개수     
 count = 700    
@@ -137,7 +189,7 @@ async def save_image(img):
 # 실시간 스트리밍 데이터 수신 함수
 async def receive_image():
     global receive_images
-    uri = "ws://20.30.65.121:5000"  # 서버의 주소 및 포트
+    uri = "ws://10.1.80.245:5000"  # 서버의 주소 및 포트
     async with websockets.connect(uri) as websocket:
         
         while True:
@@ -154,8 +206,6 @@ async def receive_image():
             cv2.imshow("Received Image", img)
             cv2.waitKey(1)
             
-            
-            # await asyncio.sleep(0.1)
             key = cv2.waitKey(1) & 0xFF
             if key == ord('s'):
                 await save_image(img)
@@ -222,20 +272,19 @@ async def handle_obstacles(goal_location, goal_area, obstacle_location):
     print("현재 가야하는 영역 :", area)
 
     # # 각도 데이터를 서버로 전송
-    # await send_angle(move_angle)
-    
-    # 영역 전송
-    # if area[0] == 0.5 and area[0] == -0.5:
-    #     await send_angle(move_angle[0])
-    #     print("각도 전송")
-    # else:
-    await send_angle(area[0])
-    print("영역 전송")
+    if check_if_reached_goal(goal_location):  # 목표에 도달하면 멈춤
+        print("목표에 도달")
+        await send_angle(0, 0)  # 차량 멈추기
+    else:
+        await send_angle(area[0])  # 이동 각도에 따라 전송
 
 # YOLO 모델 구동
 async def detection_image():
-    # 수신한 실시간 스트리밍 데이터 선언
     global receive_images
+    if receive_images is None:
+        print("이미지를 수신하지 못했습니다.")
+        return
+    
     results = model(receive_images)
         
     for result in results:
@@ -259,7 +308,7 @@ async def detection_image():
             if obstacle_location:
                 await handle_obstacles(goal_location, goal_area, obstacle_location)
             else:
-                await send_angle(determine_jetracer_area(goal_area, None))
+                await send_angle(determine_jetracer_area(goal_area, None), 0.5)
                 print("감지된 장애물이 없습니다.")
         else:
             print("감지된 객체 없음")
@@ -269,12 +318,6 @@ async def run_detection():
     while True:
         await asyncio.sleep(5)  # 5초 대기
         await detection_image()
-        # if sys.stdin in asyncio.current_task().get_stack()[0].task.get_coros():
-        #     # 키보드 입력 감지
-        #     key = sys.stdin.read(1)   
-        #     if key == 'd':
-        #         print("탐지 작업 종료")
-        #         break
             
 async def main():
     receive_task = asyncio.create_task(receive_image())  # 이미지 수신을 비동기적으로 실행
